@@ -1,0 +1,40 @@
+<xml>
+    <xmpp_settings>
+        <user></user>
+        <password></password>
+        <domain>talk.google.com</domain>
+        <name>gmail.com</name>
+        <port>5222</port> <!-- yes, requires TLS !-->
+        <resource>test</resource> <!-- change this to be able to address the bot directly !-->
+        <throttle>60</throttle> <!-- number of seconds between messages !-->
+        <targets> 
+            <you>you@yours.com</you>
+        </targets> 
+        <messages> <!-- list of semi amusing messages to send, one chosen randomly for each send_alert() !-->
+            <a>OH TEH NOES!!!! MOTION DETECTED</a>
+            <b>Houston, we have a problem.</b>
+            <c>I sense a disturbance in the force..</c>
+            <d>There's a N+-100% chance that someone is here.</d>
+            <e>Whatever you do, don't look behind you.</e>
+            <f>He's right behind me, isn't he?</f>
+        </messages>
+    </xmpp_settings>
+    <motion_settings>
+        <device>/dev/video0</device>
+        <cmd>python take_picture.py</cmd> <!-- how to call python, will append dynamic filename !-->
+        <sleep>5</sleep> <!-- how often should we check the camera? !-->
+        <ceiling>0</ceiling> <!-- if set to 0, will loop forever !-->
+        <diff_found>0</diff_found>
+        <image>
+            <x>640</x>
+            <y>480</y>
+            <itr>10_000</itr> <!-- how many pixels to compare.. the bigger the sample the better, 640x480 yields 307,200 possibles !-->
+            <deviation>2</deviation> <!-- pixel deviation: $s{m_image_itr} / n    ... 5 = 20%, 3 = 33%, etc.. !-->
+            <p_deviation>10</p_deviation> <!-- if not 0, enables and sets RGB deviation detection per pixel !-->
+        </image>
+    </motion_settings>
+    <general_settings>
+        <verbose>1</verbose>
+        <home>/home/your/</home>
+    </general_settings>
+</xml>
