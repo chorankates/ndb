@@ -26,12 +26,17 @@ use File::Spec;  # this can really only run on unix (GD), but still.. FFP FTW
 use Getopt::Long; 
 use GD;          # it sure seems like magic
 use Net::XMPP;   # to connect to gtalk
+use XML::Simple; 
 
-use ironhide;
+use ironhide; # need to create our own subset of this library to commit..
 
 $| = 1;
  
 my (%f, %s); # flags, settings
+
+my $settings_file = shift @_ // 'ndb-default.xml';
+
+%s = get_xml($settings_file);
 
 %s = (
     verbose => 1,    
@@ -350,3 +355,21 @@ sub compare_pictures {
     return $results, $deviation_pcent;
 }
 
+sub get_xml {
+    # get_xml($filename) - returns a hash based on the contents of $filename (? if error)
+    my $ffp = shift;
+    
+    return '?' unless -r $ffp;
+    
+    my $worker = XML::Simple->new();
+    
+    my $doc;
+    
+    eval { # catch invalid XML
+        $doc = $worker->XMLin($ffp);
+    };
+    
+    return '?' if @$;
+    
+    return %{$doc};
+}
