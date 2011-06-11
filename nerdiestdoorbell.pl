@@ -28,8 +28,6 @@ use GD;          # it sure seems like magic
 use Net::XMPP;   # to connect to gtalk
 use XML::Simple; 
 
-use ironhide; # need to create our own subset of this library to commit..
-
 $| = 1;
  
 my (%f, %s); # flags, settings
@@ -52,7 +50,7 @@ my $settings_file = shift @_ // 'ndb-default.xml';
     x_throttle => 60, # number of seconds between messages.. 
     x_last_msg => time(), # so we don't send a message for at least 60 seconds
     
-    x_targets => [ "you@yours.com", ], # who to message
+    x_targets => [ "you\@yours.com", ], # who to message
     x_messages => [ "OH TEH NOES!!!! MOTION DETECTED", "Houston, we have a problem.", "I sense a disturbance in the force..", "There's a N+-100% chance that someone is here.", "Whatever you do, don't look behind you."], # list of semi amusing messages to send, one chosen randomly for each send_alert()
     
     # motion settings
