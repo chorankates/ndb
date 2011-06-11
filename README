@@ -1,0 +1,17 @@
+ndb - Nerdiest Door Bell
+
+originally written because while i had a CHiMP mirror, i could never tell when someone came into my office. attached a camera to a linux box, installed some libraries and this is the result.
+
+prereqs:
+#  take_picture.py - python script to take a picture from webcam
+#  python-opencv   - python package to interface with camera .. ubuntu can sudo apt-get install this
+#  libgd2-xpm-dev  - image libraries for GD .. ubuntu can sudo apt-get install this too
+#  libssl-dev      - SSL binaries .. ubuntu can sudo apt-get install
+#  Crypt::SSLeay   - SSL crypto package from CPAN
+#  IO::Socket:SSL  - SSL wrapper
+#  XML::Stream     - XMPP dependency
+
+configuration:
+currently internal to nerdiestdoorbell.pl, in the hash '%s' (future versions will externalize this into an XML file). the XMPP settings are preconfigured to use a Google Talk XMPP connection, but this can easily be changed (x_* variables). the motion settings are tuned to a darkish room (where camera is) looking out to a well lit hallway, so will need to be modified to suit your environment. 
+
+ 
