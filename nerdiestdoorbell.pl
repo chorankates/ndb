@@ -371,3 +371,32 @@ sub get_xml {
     
     return %{$doc};
 }
+
+sub nicetime {
+    # nicetime(\@time, type) - returns time/date according to the type 
+    # types are: time, date, both
+    my $aref = shift @_; my @time = @{$aref};
+    my $type = shift @_ || "both"; # default variables ftw.
+    warn "warn> nicetime: type '$type' unknown" unless ($type =~ /time|date|both/);
+    warn "warn> nicetime: \@time may not be properly populated (", scalar @time, " elements)" unless scalar @time == 9;
+
+
+    my $hour = $time[2]; my $minute = $time[1]; my $second = $time[0];
+    $hour    = 0 . $hour   if $hour   < 10;
+    $minute  = 0 . $minute if $minute < 10;
+    $second  = 0 . $second if $second < 10;
+
+    my $day = $time[3]; my $month = $time[4] + 1; my $year = $time[5] + 1900;
+    $day   = 0 . $day   if $day   < 10;
+    $month = 0 . $month if $month < 10;
+
+    my $time = $hour .  "." . $minute . "." . $second;
+    #my $date = $month . "." . $day    . "." . $year; 
+    my $date = $year . "." . $month . "." . $day; # new style, makes for better sorting
+
+    my $full = $date . "-" . $time;
+
+    if ($type eq "time") { return $time; }
+    if ($type eq "date") { return $date; }
+    if ($type eq "both") { return $full; }
+}
