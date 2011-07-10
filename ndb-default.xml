@@ -37,4 +37,15 @@
         <verbose>1</verbose>
         <home>/home/your/</home>
     </general_settings>
+    <experimental_settings>
+        <!-- if enabled, will save off DIFF detected files to save_diffs_dir !-->
+        <save_diffs>1</save_diffs>
+        <save_diffs_dir>/home/yours/</save_diffs_dir>
+        
+        <!-- if enabled, will include a link to the image. assumes you're running a webserver from the NDB machine !-->
+        <!-- requires save_diffs to be enabled, will replace !file! with the actual file name !-->
+        <link_diffs>1</link_diffs>
+        <link_diffs_template>http://you.yours.com/ndb/!file!</link_diffs_template>
+        
+    </experimental_settings>
 </xml>
