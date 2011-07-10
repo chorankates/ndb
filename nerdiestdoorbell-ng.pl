@@ -39,9 +39,27 @@ GetOptions(\%C::flags, "help", "verbose:i", "xml:s"); # will be getting all othe
 my $config_file = $C::flags{xml} // 'ndb-default.xml';
 %C::settings = get_xml($config_file);
 
+# CLI spec should supercede config file
+$C::settings{$_} = $C::flags{$_} foreach (keys %C::flags);
+
+## convenience hashes
+%C::xmpp = %{$C::settings{xmpp_settings}};
+%C::motion = %{$C::settings{motion_settings}};
+%C::general = %{$C::settings{general_settings}};
+%C::experimental = %{$C::settings{experimental_settings}};
+
 ## dump variables
-Data::Dumper(\%C::flags)      if $C::settings{verbose} ge 2;
-Data::Dumper(\%C::settings) if $C::settings{verbose} ge 1;
+print Dumper(\%C::flags)      if $C::general{verbose} gt 2;
+print Dumper(\%C::settings) if $C::general{verbose} gt 2;
+print Dumper(\%C::xmpp)    if $C::general{verbose} eq 1;
+print Dumper(\%C::motion)  if $C::general{verbose} eq 1;
+print Dumper(\%C::general) if $C::general{verbose} eq 1;
+print Dumper(\%C::experimental) if $C::general{verbose} eq 1;
+
+## ensure settings are sane
+die "DIE:: unable to locate specified webcam:$C::motion{device}" unless -f $C::motion{device};
+die "DIE:: unable to locate 'take_picture.py'" unless -f 'take_picture.py';
+die "DIE:: unable to run on Windows currently" unless $^O =~ /linux/i;
 
 print "DBGZ" if 0;
 
@@ -64,7 +82,8 @@ sub get_xml {
 	my $doc;
 	
 	eval {
-		$doc = $worker->XMLin($ffp, ForceArray => 1);
+		#$doc = $worker->XMLin($ffp, ForceArray => 1);
+		$doc = $worker->XMLin($ffp);
 	};
 	
 	if ($@) {
