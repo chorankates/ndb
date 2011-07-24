@@ -182,29 +182,38 @@ sub send_alert {
         return 0; # returning success
     }
 
-    # connect to the server
-    my $xmpp = Net::XMPP::Client->new();
-    my $status = $xmpp->Connect(
-        hostname       => $hostname,
-        port           => $port,
-        componentname  => $componentname,
-        connectiontype => "tcpip", # when would it be anything else?
-        tls            => $tls,
-    ) or die "DIE:: cannot connect: $!\n";
+	my ($xmpp, $status, $sid, @auth); # scope hacking
+
+	eval {
+	    # connect to the server
+	    $xmpp = Net::XMPP::Client->new();
+    	$status = $xmpp->Connect(
+        	hostname       => $hostname,
+	        port           => $port,
+	        componentname  => $componentname,
+	        connectiontype => "tcpip", # when would it be anything else?
+	        tls            => $tls,
+	    ) or die "DIE:: cannot connect: $!\n";
     
-    # change hostname .. kind of
-    my $sid = $xmpp->{SESSION}->{id};
-    $xmpp->{STREAM}->{SIDS}->{$sid}->{hostname} = $s{x_name};
+    	# change hostname .. kind of
+	    $sid = $xmpp->{SESSION}->{id};
+	    $xmpp->{STREAM}->{SIDS}->{$sid}->{hostname} = $s{x_name};
     
-    # authenticate 
-    my @auth = $xmpp->AuthSend(
-        username => $user,
-        password => $password,
-        resource => $resource, # this identifies the sender
-    );
+	    # authenticate 
+    	@auth = $xmpp->AuthSend(
+        	username => $user,
+    	    password => $password,
+  	    	resource => $resource, # this identifies the sender
+	    );
     
-    die "DIE:: authorization failed: $auth[0] - $auth[1]" if $auth[0] ne "ok";
-    
+	    die "DIE:: authorization failed: $auth[0] - $auth[1]" if $auth[0] ne "ok";
+    };
+
+	if ($@) { 
+		warn "WARN:: unable to connect/authenticate: $@";
+		return 1;
+	}
+
     # send a message   
     foreach (@targets) {
         my $lresults = 0; 
@@ -229,7 +238,7 @@ sub send_alert {
     $s{x_last_msg} = time();
     
     
-    return;
+    return 0;
 }
 
 sub take_a_picture {
