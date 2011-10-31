@@ -110,16 +110,12 @@ sub compare_pictures {
     my $ih1 = GD::Image->new($f1);
     my $ih2 = GD::Image->new($f2);
   
-    #my $iterations        = $s{m_image_itr};
     my $iterations        = $C::settings{motion_settings}{image}{itr};
-    #my $allowed_deviation = int($iterations / $s{m_deviation}); # 1.000001  seems to be a good number so far.. looks like need to increase the sample size again or start RGB deviation
     my $allowed_deviation = int($iterations / $C::settings{motion_settings}{deviation}); # 1.000001  seems to be a good number so far.. looks like need to increase the sample size again or start RGB deviation
 
     my $deviation         = 0;
     
     # size of input image
-    #my $x = $s{m_image_x}; 
-    #my $y = $s{m_image_y};
     my $x = $C::settings{motion_settings}{image}{x}; 
     my $y = $C::settings{motion_settings}{image}{y};
 
@@ -215,3 +211,136 @@ sub get_coords {
 
 	return ($x, $y);
 }
+
+sub hdump {
+    # hdump(\%hash, $type) - dumps %hash, helped by $type
+    my ($href, $type) = @_;
+    my %h = %{$href};
+    
+    print "> hdump($type):\n";
+    
+    foreach (sort keys %h) {
+        print "\t$_", " " x (20 - length($_));
+        
+        print "$h{$_}\n"    unless $h{$_} =~ /array/i;
+        print "@{$h{$_}}\n" if     $h{$_} =~ /array/i;
+    }
+    
+    return;
+}
+
+sub send_alert {
+    # send_alert($filename, $deviation_pcent) - pulls rest of the needful out of %s hash. return 0|1 for success|failure
+    my ($filename, $deviation_pcent) = @_;
+    my $results;
+
+    # we're pulling from %s, but still, a little abstraction
+    # server settings
+    my $hostname      = $C::settings{xmpp_settings}{domain};
+    my $port          = $C::settings{xmpp_settings}{port};
+    my $componentname = $C::settings{xmpp_settings}{name};
+    my $tls           = 1; # this should almost always be 1
+    # auth settings
+    my $user     = $C::settings{xmpp_settings}{user};
+    my $password = $C::settings{xmpp_settings}{password};
+    my $resource = $C::settings{xmpp_settings}{resource};
+    # message settings
+    my @targets  = @{$C::settings{xmpp_settings}{targets}};
+    my @msgs     = @{$C::settings{xmpp_settings}{messages}};
+    my $msg_txt  = $msgs[int(rand($#msgs))] . ", deviation: $deviation_pcent%, filename: $filename"; 
+
+    # check throttle
+    my $lt1 = time();
+    my $lt2 = $C::settings{xmpp_settings}{last_msg} // time(); # this also prevents a msg from being sent for the first minute.. disabling throttle is a good idea on a long sleep timer
+
+    my $throttle = $C::settings{general_settings}{throttle};
+    my $sec_diff = $lt1 - $lt2;
+    
+    
+    
+    if ($sec_diff <= $throttle and $throttle != 0) {
+        print "\tthrottling XMPP messages, t$throttle / s$sec_diff\n" if $C::settings{general_settings}{verbose} ge 1;
+        return 0; # returning success
+    }
+
+	my ($xmpp, $status, $sid, @auth); # scope hacking
+
+	eval {
+	    # connect to the server
+	    $xmpp = Net::XMPP::Client->new();
+    	$status = $xmpp->Connect(
+        	hostname       => $hostname,
+	        port           => $port,
+	        componentname  => $componentname,
+	        connectiontype => "tcpip", # when would it be anything else?
+	        tls            => $tls,
+	    ) or die "DIE:: cannot connect: $!\n";
+    
+    	# change hostname .. kind of
+	    $sid = $xmpp->{SESSION}->{id};
+	    $xmpp->{STREAM}->{SIDS}->{$sid}->{hostname} = $componentname;
+    
+	    # authenticate 
+    	@auth = $xmpp->AuthSend(
+        	username => $user,
+    	    password => $password,
+  	    	resource => $resource, # this identifies the sender
+	    );
+    
+	    die "DIE:: authorization failed: $auth[0] - $auth[1]" if $auth[0] ne "ok";
+    };
+
+	if ($@) { 
+		warn "WARN:: unable to connect/authenticate: $@";
+		return 1;
+	}
+
+    # send a message   
+    foreach (@targets) {
+        my $lresults = 0; 
+        print "\tsending alert to '$_'..";
+        
+        $xmpp->MessageSend(
+            to       => $_,
+            body     => $msg_txt,
+            resource => $resource, # could be used for sending to only a certain location, but if it doesn't match anything the user has, it delivers to all
+        ) or $results = $!;
+        
+        $lresults = ($lresults) ? " FAILED: $lresults" : " OK!";
+        print " $results\n",
+        
+    }
+    
+    # endup
+    $xmpp->Disconnect();
+    
+    # throttle
+    # my @lt1 = localtime;
+    $C::settings{xmpp_settings}{last_msg} = time();
+    
+    
+    return 0;
+}
+
+sub take_a_picture {
+    # take_a_picture() - no params, we'll pull them out of %s
+    # i feel dirty, but pythons modules are superior.. OUTSOURCED
+    my ($filename, $cmd);
+    
+    my @lt1 = localtime; # need to define this locally so it gets updated on every run
+    
+    my $ts = nicetime(\@lt1, "both");
+    
+    $filename = "mcap-" . $ts . "_diff.jpg";
+    
+    $cmd = $C::settings{motion_settings}{cmd} . " $filename";
+    
+    my $results = `$cmd 2>&1`; # capture and suppress STDOUT and STDERR
+    
+    $filename = File::Spec->catfile($C::settings{general_settings}{home}, $filename);
+    
+    warn "WARN:: no picture taken\n" unless -e $filename;
+    
+    return $filename;
+}
+
