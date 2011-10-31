@@ -26,7 +26,7 @@ use Data::Dumper;
 use File::Basename; # could be replaced by a pretty simple regex..
 use File::Spec;  # this can really only run on unix (GD), but still.. FFP FTW
 use Getopt::Long; 
-use GD;                # it sure seems like magic
+#use GD;                # it sure seems like magic
 use Net::XMPP;    # to connect to gtalk
 use Time::HiRes; # ocd
 use XML::Simple; # read configuration files  
@@ -44,17 +44,17 @@ my $config_file = $C::flags{xml} // 'ndb-default.xml';
 $C::settings{$_} = $C::flags{$_} foreach (keys %C::flags);
 
 ## convenience hashes
-%C::xmpp = %{$C::settings{xmpp_settings}};
-%C::motion = %{$C::settings{motion_settings}};
-%C::general = %{$C::settings{general_settings}};
-%C::experimental = %{$C::settings{experimental_settings}};
+%C::xmpp         = %{$C::settings{xmpp_settings}}         if defined $C::settings{xmpp_settings};
+%C::motion       = %{$C::settings{motion_settings}}       if defined $C::settings{motion_settings};
+%C::general      = %{$C::settings{general_settings}}      if defined $C::settings{general_settings};
+%C::experimental = %{$C::settings{experimental_settings}} if $C::settings{experimental_settings};
 
 ## dump variables
-print Dumper(\%C::flags)      if $C::general{verbose} gt 2;
-print Dumper(\%C::settings) if $C::general{verbose} gt 2;
-print Dumper(\%C::xmpp)    if $C::general{verbose} eq 1;
-print Dumper(\%C::motion)  if $C::general{verbose} eq 1;
-print Dumper(\%C::general) if $C::general{verbose} eq 1;
+print Dumper(\%C::flags)        if $C::general{verbose} gt 2;
+print Dumper(\%C::settings)     if $C::general{verbose} gt 2;
+print Dumper(\%C::xmpp)         if $C::general{verbose} eq 1;
+print Dumper(\%C::motion)       if $C::general{verbose} eq 1;
+print Dumper(\%C::general)      if $C::general{verbose} eq 1;
 print Dumper(\%C::experimental) if $C::general{verbose} eq 1;
 
 ## ensure settings are sane
@@ -92,6 +92,9 @@ sub get_xml {
 		return 0;
 	}
 	
+	# post-processing?
+	print "DBGZ" if 0;
+	
 	return %{$doc};
 }
 
@@ -107,16 +110,21 @@ sub compare_pictures {
     my $ih1 = GD::Image->new($f1);
     my $ih2 = GD::Image->new($f2);
   
-    my $iterations        = $s{m_image_itr};
-    my $allowed_deviation = int($iterations / $s{m_deviation}); # 1.000001  seems to be a good number so far.. looks like need to increase the sample size again or start RGB deviation
+    #my $iterations        = $s{m_image_itr};
+    my $iterations        = $C::settings{motion_settings}{image}{itr};
+    #my $allowed_deviation = int($iterations / $s{m_deviation}); # 1.000001  seems to be a good number so far.. looks like need to increase the sample size again or start RGB deviation
+    my $allowed_deviation = int($iterations / $C::settings{motion_settings}{deviation}); # 1.000001  seems to be a good number so far.. looks like need to increase the sample size again or start RGB deviation
+
     my $deviation         = 0;
     
     # size of input image
-    my $x = $s{m_image_x}; 
-    my $y = $s{m_image_y};
+    #my $x = $s{m_image_x}; 
+    #my $y = $s{m_image_y};
+    my $x = $C::settings{motion_settings}{image}{x}; 
+    my $y = $C::settings{motion_settings}{image}{y};
+
     my %cache; # allows us to ensure unique coord comparison
 	my $itr_start = Time::HiRes::gettimeofday();
-
 
 	ITERATION:
     for (my $i = 0; $i < $iterations; $i++) {
@@ -137,7 +145,7 @@ sub compare_pictures {
 			next ITERATION if $local_itr > 1_000_000; # should probably add a warning here, maybe make the ceiling configurable 
 		}
 		my $unique_created = Time::HiRes::gettimeofday();
-		print "DBG:: found unique coordinates in ", ($unique_created - $itr_start), " s ($local_itr)\n" if $s{verbose} ge 3;
+		print "DBG:: found unique coordinates in ", ($unique_created - $itr_start), " s ($local_itr)\n" if $C::settings{general_settings}{verbose} ge 3;
 
         my ($index1, $index2, @r1, @r2); # eval scope hack
         
@@ -146,22 +154,23 @@ sub compare_pictures {
             $index1 = $ih1->getPixel($gx, $gy);
             $index2 = $ih2->getPixel($gx, $gy);
 			
-            print "\tcomparing '$index1' and '$index2'\n" if $s{verbose} ge 3;
-            
+		    print "\tcomparing '$index1' and '$index2'\n" if $C::settings{general_settings}{verbose} ge 3;
+
             # compare values need to be broken down to RGB
             @r1 = $ih1->rgb($index1);
             @r2 = $ih2->rgb($index2);
             
-            print "\tcomparing '@r1' and '@r2'\n" if $s{verbose} ge 4;
+            print "\tcomparing '@r1' and '@r2'\n" if $C::settings{general_settings}{verbose} ge 4;
         };
         
         if ($@) { warn "WARN:: unable to grab pixels: $@"; return 1; } 
         
         # pixel RGB deviation detection.. it works
-        if ($s{m_p_deviation}) {
-            # this could be rewritten as a map
-            my $p_deviation = $s{m_p_deviation}; # allowed pixel deviation
-            my $l_deviation = 0;                 # set this if $diff  >= $p_deviation (where $diff is the difference between each RGB value of each pixel)
+        if ($C::settings{motion_settings}{p_deviation}) {
+		    # this could be rewritten as a map
+            my $p_deviation = $C::settings{motion_settings}{p_deviation}; # allowed pixel deviation
+            
+			my $l_deviation = 0;                 # set this if $diff  >= $p_deviation (where $diff is the difference between each RGB value of each pixel)
                     
             for (my $i = 0; $i < $#r1; $i++) {
                 my $one = $r1[$i];
@@ -183,12 +192,12 @@ sub compare_pictures {
     }
 
 	my $itr_end = Time::HiRes::gettimeofday();
-	print "DBG:: comparison complete in ", ($itr_end - $itr_start), "s\n" if $s{verbose} ge 3;
+	print "DBG:: comparison complete in ", ($itr_end - $itr_start), "s\n" if $C::settings{general_settings}{verbose} ge 3;
     $results = ($deviation > $allowed_deviation) ? 1 : 0; # 1 is different, 0 is same
 
     my $deviation_pcent = int(($deviation / $iterations) * 100); # we should really be keying off of this
 
-    print "\tdeviation: d$deviation / a$allowed_deviation / i$iterations = $deviation_pcent%\n" if $s{verbose} ge 1;
+    print "\tdeviation: d$deviation / a$allowed_deviation / i$iterations = $deviation_pcent%\n" if $C::settings{general_settings}{verbose} ge 1;
 
     return $results, $deviation_pcent;
 }
@@ -203,7 +212,6 @@ sub get_coords {
 	# on %cache uniqueness checking
 	$x = int(rand($max_x));
 	$y = int(rand($max_y));
-
 
 	return ($x, $y);
 }
