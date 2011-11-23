@@ -16,10 +16,14 @@
 # TODO
 #   need an interface for email and sms (google voice api?)
 #   write an interrupt handler to cleanup
+#   make the XMPP object global and give the option for gtalk/jabber persistence
 
 use strict;
 use warnings;
 use 5.010;
+
+## intercept ctrl+c, do some cleanup
+$SIG{INT} = \&cleanup('ctrl-c');
 
 ## prereqs here
 use Data::Dumper;
@@ -344,3 +348,22 @@ sub take_a_picture {
     return $filename;
 }
 
+
+sub cleanup {
+	# cleanup($keystroke) - does a little cleanup if the user hits ctrl+c
+	my ($sequence, $response);
+	$sequence = uc(shift);
+	
+	## what do we want to do here? settle for a confirmation prompt for now
+	print uc($sequence) . " received, are you sure you want to quit? [y/N] ";
+	chomp ($response = <STDIN>);
+	
+	if ($response =~ /y/i) {
+		print STDERR "$0 exiting after receiving '$sequence'\n";
+		exit 1;
+	} else {
+		print STDERR "$0 quit aborted\n";
+	}
+	
+	return;
+}
