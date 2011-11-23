@@ -337,8 +337,8 @@ sub send_alert {
             resource => $resource, # could be used for sending to only a certain location, but if it doesn't match anything the user has, it delivers to all
         ) or $results = $!;
         
-        $lresults = ($lresults) ? " FAILED: $lresults" : " OK!";
-        print " $results\n",
+        $lresults = ($results) ? " FAILED: $results" : " OK!";
+        print " $lresults\n",
         
     }
     
