@@ -15,7 +15,6 @@
 
 # TODO
 #   need an interface for email and sms (google voice api?)
-#   write an interrupt handler to cleanup
 #   make the XMPP object global and give the option for gtalk/jabber persistence
 
 use strict;
@@ -347,8 +346,6 @@ sub take_a_picture {
     
     return $filename;
 }
-
-
 sub cleanup {
 	# cleanup($keystroke) - does a little cleanup if the user hits ctrl+c
 	my ($sequence, $response);
