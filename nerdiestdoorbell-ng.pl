@@ -69,7 +69,35 @@ print "DBGZ" if 0;
 
 ## loop
 while (1) {
+	my ($deviation, $last_picture, $notification_results, $picture_results);
 	
+	# find the last picture we took
+	$last_picture = (defined $C::motion{last_picture}) ? $C::motion{last_picture} : 'none';
+	
+	# take a picture
+	$C::motion{current_picture} = take_a_picture();
+	
+	# compare the pictures
+	if ($last_picture eq 'none') {
+		print "DBG:: no last picture found (probably first new run)\n" if $C::general{verbose} ge 0;
+		next;
+	} elsif (-f $C::motion{current_picture}) {
+		print "WARN:: last picture [$last_picture] does not exist, skipping\n" if $C::general{verbose} ge 1;
+	}
+	
+	($picture_results, $deviation) = compare_pictures($last_picture, $C::motion{current_picture});
+	
+	# send alerts if need be
+	if ($picture_results > 0) {
+		$notification_results = send_alert($C::motion{current_picture}, $deviation);
+		print "WARN:: sending alert failed\n" if $notification_results;
+	}
+	
+	# sleep
+	if ($C::motion{sleep} =~ /\d+/) {
+		print "DBG:: sleeping [$C::motion{sleep}]\n";
+		sleep $C::motion{sleep};
+	}
 }
 
 ## cleanup
@@ -326,7 +354,7 @@ sub send_alert {
 }
 
 sub take_a_picture {
-    # take_a_picture() - no params, we'll pull them out of %s
+    # take_a_picture() - no params, we'll pull them out of %s, returns $filename
     # i feel dirty, but pythons modules are superior.. OUTSOURCED
     my ($filename, $cmd);
     
