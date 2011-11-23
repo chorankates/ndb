@@ -392,3 +392,36 @@ sub cleanup {
 	
 	return;
 }
+sub save_diff_files {
+	# save_diff_files($f1, $f2) - makes a copy of $f1 and $f2 for later review - returns 0|1 for success|failure
+	my @files_unverified = @_;
+	my $save_dir  = $C::experimental{save_diffs};
+	my $results = 0;        
+	
+	return 1 unless defined $C::experimental{save_diffs_dir}; # should we just try and create it?
+	return 1 unless -d      $C::experimental{save_diffs_dir};
+	
+	my @files;
+	foreach (@files_unverified) {
+		push @files, $_ if -f $_;
+	}
+	
+	$results = 1 unless $#files == $#files_unverified; 
+	foreach my $file (@files) { 
+		my $fname = basename($file);
+		my $file_new = File::Spec->catfile($C::experimental{save_diffs_dir}, $fname);
+		my $cmd = "cp $file $file_new";
+
+		my $lresults = system($cmd);
+
+		if ($lresults) { 
+			# something went wrong
+			print "WARN:: bad return code from copy [$fname --> $file_new]: $results" if $C::general{verbose} ge 1;
+			$results = 1;
+		}
+		# end of loop
+	}
+	
+	return $results;
+}
+
