@@ -7,14 +7,14 @@ use warnings;
 use Time::HiRes;
 
 ## real world use
-#my $max_x = 640;
-#my $max_y = 480;
-#my $itr = 300_000; # 640x480 = 307_200
+my $max_x = 640;
+my $max_y = 480;
+my $itr = 300_000; # 640x480 = 307_200
 
 ## breaking point
-my $max_x = 1920;
-my $max_y = 1080;
-my $itr   = 2_000_000; ## should come up with a formula here
+#my $max_x = 1920;
+#my $max_y = 1080;
+#my $itr   = 2_000_000; ## should come up with a formula here
 
 my %cache;
 

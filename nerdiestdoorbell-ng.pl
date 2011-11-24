@@ -16,6 +16,7 @@
 # TODO
 #   need an interface for email and sms (google voice api?)
 #   make the XMPP object global and give the option for gtalk/jabber persistence
+#   implement a Log4Perl solution instead of the $s{verbose} hacks
 
 use strict;
 use warnings;
