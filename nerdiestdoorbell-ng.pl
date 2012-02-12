@@ -165,8 +165,8 @@ sub compare_pictures {
 		while (1) {
 			($gx, $gy) = get_coords($x, $y);
 			
-			unless ($cache{$x}{$y}) {
-				$cache{$x}{$y} = 1;
+			unless ($cache{$gx}{$gy}) {
+				$cache{$gx}{$gy} = 1;
 
 				last UNIQUE;
 			}
