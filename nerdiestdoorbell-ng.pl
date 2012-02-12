@@ -81,8 +81,9 @@ while (1) {
 	# compare the pictures
 	if ($last_picture eq 'none') {
 		print "DBG:: no last picture found (probably first new run)\n" if $C::general{verbose} ge 0;
+        $C::motion{last_picture} = $C::motion{current_picture};
 		next;
-	} elsif (-f $C::motion{current_picture}) {
+	} elsif (! -f $last_picture) {
 		print "WARN:: last picture [$last_picture] does not exist, skipping\n" if $C::general{verbose} ge 1;
 	}
 	
@@ -143,7 +144,7 @@ sub compare_pictures {
     my $ih2 = GD::Image->new($f2);
   
     my $iterations        = $C::settings{motion_settings}{image}{itr};
-    my $allowed_deviation = int($iterations / $C::settings{motion_settings}{deviation}); # 1.000001  seems to be a good number so far.. looks like need to increase the sample size again or start RGB deviation
+    my $allowed_deviation = int($iterations / $C::settings{motion_settings}{image}{deviation}); # 1.000001  seems to be a good number so far.. looks like need to increase the sample size again or start RGB deviation
 
     my $deviation         = 0;
     
