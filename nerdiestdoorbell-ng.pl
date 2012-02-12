@@ -23,14 +23,14 @@ use warnings;
 use 5.010;
 
 ## intercept ctrl+c, do some cleanup
-$SIG{INT} = \&cleanup('ctrl-c');
+#$SIG{INT} = \&cleanup('ctrl-c');
 
 ## prereqs here
 use Data::Dumper;
 use File::Basename; # could be replaced by a pretty simple regex..
 use File::Spec;  # this can really only run on unix (GD), but still.. FFP FTW
 use Getopt::Long; 
-#use GD;                # it sure seems like magic
+use GD;                # it sure seems like magic
 use Net::XMPP;    # to connect to gtalk
 use Time::HiRes; # ocd
 use XML::Simple; # read configuration files  
@@ -364,12 +364,11 @@ sub take_a_picture {
     my $ts = nicetime(\@lt1, "both");
     
     $filename = "mcap-" . $ts . "_diff.jpg";
+    $filename = File::Spec->catfile($C::settings{general_settings}{home}, $filename);
     
-    $cmd = $C::settings{motion_settings}{cmd} . " $filename";
+	$cmd = $C::settings{motion_settings}{cmd} . " $filename";
     
     my $results = `$cmd 2>&1`; # capture and suppress STDOUT and STDERR
-    
-    $filename = File::Spec->catfile($C::settings{general_settings}{home}, $filename);
     
     warn "WARN:: no picture taken\n" unless -e $filename;
     
