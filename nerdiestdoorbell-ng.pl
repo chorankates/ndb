@@ -17,6 +17,7 @@
 #   need an interface for email and sms (google voice api?)
 #   make the XMPP object global and give the option for gtalk/jabber persistence
 #   implement a Log4Perl solution instead of the $s{verbose} hacks
+#   need to implement some sort of cleanup mechanism for tmp/
 
 use strict;
 use warnings;
@@ -97,7 +98,7 @@ while (1) {
 	
 	# sleep
 	if ($C::motion{sleep} =~ /\d+/) {
-		print "DBG:: sleeping [$C::motion{sleep}]\n";
+		print "DBG:: sleeping [$C::motion{sleep}]\n" if $C::general{verbose} ge 3;
 		sleep $C::motion{sleep};
 	}
 }
@@ -279,8 +280,8 @@ sub send_alert {
     my $password = $C::settings{xmpp_settings}{password};
     my $resource = $C::settings{xmpp_settings}{resource};
     # message settings
-    my @targets  = @{$C::settings{xmpp_settings}{targets}};
-    my @msgs     = @{$C::settings{xmpp_settings}{messages}};
+    my @targets  = values %{$C::settings{xmpp_settings}{targets}};
+    my @msgs     = values %{$C::settings{xmpp_settings}{messages}};
     my $msg_txt  = $msgs[int(rand($#msgs))] . ", deviation: $deviation_pcent%, filename: $filename"; 
 
     # check throttle
