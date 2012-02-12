@@ -28,7 +28,7 @@
         <image>
             <x>640</x>
             <y>480</y>
-            <itr>10_000</itr> <!-- how many pixels to compare.. the bigger the sample the better, 640x480 yields 307,200 possibles !-->
+            <itr>10000</itr> <!-- how many pixels to compare.. the bigger the sample the better, 640x480 yields 307,200 possibles !-->
             <deviation>2</deviation> <!-- pixel deviation: $s{m_image_itr} / n    ... 5 = 20%, 3 = 33%, etc.. !-->
             <p_deviation>10</p_deviation> <!-- if not 0, enables and sets RGB deviation detection per pixel !-->
         </image>
