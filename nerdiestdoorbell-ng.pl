@@ -159,7 +159,8 @@ sub compare_pictures {
     for (my $i = 0; $i < $iterations; $i++) {
 		my ($gx, $gy); # scope hacking
 		my $local_itr = 0; # keep track of while(1) iterations
-
+		my $local_itr_start = Time::HiRes::gettimeofday();
+		
 		UNIQUE:
 		while (1) {
 			($gx, $gy) = get_coords($x, $y);
@@ -174,7 +175,7 @@ sub compare_pictures {
 			next ITERATION if $local_itr > 1_000_000; # should probably add a warning here, maybe make the ceiling configurable 
 		}
 		my $unique_created = Time::HiRes::gettimeofday();
-		print "DBG:: found unique coordinates in ", ($unique_created - $itr_start), " s ($local_itr)\n" if $C::settings{general_settings}{verbose} ge 3;
+		print "DBG:: found unique coordinates in ", ($unique_created - $local_itr_start), " s ($local_itr)\n" if $C::settings{general_settings}{verbose} ge 3;
 
         my ($index1, $index2, @r1, @r2); # eval scope hack
         
@@ -195,9 +196,9 @@ sub compare_pictures {
         if ($@) { warn "WARN:: unable to grab pixels: $@"; return 1; } 
         
         # pixel RGB deviation detection.. it works
-        if ($C::settings{motion_settings}{p_deviation}) {
+        if ($C::settings{motion_settings}{image}{p_deviation}) {
 		    # this could be rewritten as a map
-            my $p_deviation = $C::settings{motion_settings}{p_deviation}; # allowed pixel deviation
+            my $p_deviation = $C::settings{motion_settings}{image}{p_deviation}; # allowed pixel deviation
             
 			my $l_deviation = 0;                 # set this if $diff  >= $p_deviation (where $diff is the difference between each RGB value of each pixel)
                     
