@@ -224,9 +224,12 @@ sub compare_pictures {
 
 	my $itr_end = Time::HiRes::gettimeofday();
 	print "DBG:: comparison complete in ", ($itr_end - $itr_start), "s\n" if $C::settings{general_settings}{verbose} ge 3;
-    $results = ($deviation > $allowed_deviation) ? 1 : 0; # 1 is different, 0 is same
+    #$results = ($deviation > $allowed_deviation) ? 1 : 0; # 1 is different, 0 is same
 
     my $deviation_pcent = int(($deviation / $iterations) * 100); # we should really be keying off of this
+	my $allowed_deviation_pcent = $C::settings{image}{allowed_deviation_percent};
+
+	$results = ($deviation_pcent > $allowed_deviation_pcent) ? 1 : 0;
 
     print "\tdeviation: d$deviation / a$allowed_deviation / i$iterations = $deviation_pcent%\n" if $C::settings{general_settings}{verbose} ge 1;
 
