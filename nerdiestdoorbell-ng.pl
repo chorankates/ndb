@@ -95,7 +95,11 @@ while (1) {
 		$notification_results = send_alert($C::motion{current_picture}, $deviation);
 		print "WARN:: sending alert failed\n" if $notification_results;
 	}
-	
+
+	# truffle shuffle and cleanup
+    unlink ($C::motion{last_picture}) or warn "WARN:: unable to remove temporary file [$C::motion{current_picture}]";
+	$C::motion{last_picture} = $C::motion{current_picture};
+
 	# sleep
 	if ($C::motion{sleep} =~ /\d+/) {
 		print "DBG:: sleeping [$C::motion{sleep}]\n" if $C::general{verbose} ge 3;
@@ -139,19 +143,21 @@ sub compare_pictures {
     
     warn "WARN:: unable to find '$f1'\n" and return 1 unless -e $f1;
     warn "WARN:: unable to find '$f2'\n" and return 1 unless -e $f2;
-       
+   
+    print "comparing [$f1] and [$f2]..\n" if $C::general{verbose} ge 3;
+
     # HT to http://www.perlmonks.org/?node_id=576382
     my $ih1 = GD::Image->new($f1);
     my $ih2 = GD::Image->new($f2);
   
-    my $iterations        = $C::settings{motion_settings}{image}{itr};
-    my $allowed_deviation = int($iterations / $C::settings{motion_settings}{image}{deviation}); # 1.000001  seems to be a good number so far.. looks like need to increase the sample size again or start RGB deviation
+    my $iterations        = $C::motion{image}{itr};
+    my $allowed_deviation = int($iterations / $C::motion{image}{deviation}); # 1.000001  seems to be a good number so far.. looks like need to increase the sample size again or start RGB deviation
 
     my $deviation         = 0;
     
     # size of input image
-    my $x = $C::settings{motion_settings}{image}{x}; 
-    my $y = $C::settings{motion_settings}{image}{y};
+    my $x = $C::motion{image}{x}; 
+    my $y = $C::motion{image}{y};
 
     my %cache; # allows us to ensure unique coord comparison
 	my $itr_start = Time::HiRes::gettimeofday();
@@ -176,7 +182,7 @@ sub compare_pictures {
 			next ITERATION if $local_itr > 1_000_000; # should probably add a warning here, maybe make the ceiling configurable 
 		}
 		my $unique_created = Time::HiRes::gettimeofday();
-		print "DBG:: found unique coordinates in ", ($unique_created - $local_itr_start), " s ($local_itr)\n" if $C::settings{general_settings}{verbose} ge 3;
+		print "DBG:: found unique coordinates in ", ($unique_created - $local_itr_start), " s ($local_itr)\n" if $C::general{verbose} ge 3;
 
         my ($index1, $index2, @r1, @r2); # eval scope hack
         
@@ -185,21 +191,21 @@ sub compare_pictures {
             $index1 = $ih1->getPixel($gx, $gy);
             $index2 = $ih2->getPixel($gx, $gy);
 			
-		    print "\tcomparing '$index1' and '$index2'\n" if $C::settings{general_settings}{verbose} ge 3;
+		    print "\tcomparing '$index1' and '$index2'\n" if $C::general{verbose} ge 3;
 
             # compare values need to be broken down to RGB
             @r1 = $ih1->rgb($index1);
             @r2 = $ih2->rgb($index2);
             
-            print "\tcomparing '@r1' and '@r2'\n" if $C::settings{general_settings}{verbose} ge 4;
+            print "\tcomparing '@r1' and '@r2'\n" if $C::general{verbose} ge 4;
         };
         
         if ($@) { warn "WARN:: unable to grab pixels: $@"; return 1; } 
         
         # pixel RGB deviation detection.. it works
-        if ($C::settings{motion_settings}{image}{p_deviation}) {
+        if ($C::motion{image}{p_deviation}) {
 		    # this could be rewritten as a map
-            my $p_deviation = $C::settings{motion_settings}{image}{p_deviation}; # allowed pixel deviation
+            my $p_deviation = $C::motion{image}{p_deviation}; # allowed pixel deviation
             
 			my $l_deviation = 0;                 # set this if $diff  >= $p_deviation (where $diff is the difference between each RGB value of each pixel)
                     
@@ -223,15 +229,22 @@ sub compare_pictures {
     }
 
 	my $itr_end = Time::HiRes::gettimeofday();
-	print "DBG:: comparison complete in ", ($itr_end - $itr_start), "s\n" if $C::settings{general_settings}{verbose} ge 3;
+	print "DBG:: comparison complete in ", ($itr_end - $itr_start), "s\n" if $C::general{verbose} ge 3;
     #$results = ($deviation > $allowed_deviation) ? 1 : 0; # 1 is different, 0 is same
 
     my $deviation_pcent = int(($deviation / $iterations) * 100); # we should really be keying off of this
-	my $allowed_deviation_pcent = $C::settings{image}{allowed_deviation_percent};
+	my $allowed_deviation_pcent = $C::motion{image}{allowed_deviation_percent};
 
 	$results = ($deviation_pcent > $allowed_deviation_pcent) ? 1 : 0;
 
-    print "\tdeviation: d$deviation / a$allowed_deviation / i$iterations = $deviation_pcent%\n" if $C::settings{general_settings}{verbose} ge 1;
+	if ($results) { 
+		# something is different
+		my $save_diffs = save_diff_files($f1, $f2);
+		warn "WARN:: failed to save_diffs for [$f1, $f2]" if $save_diffs;
+		
+	}
+
+    print "\tdeviation: d$deviation / a$allowed_deviation / i$iterations = $deviation_pcent%\n" if $C::general{verbose} ge 1;
 
     return $results, $deviation_pcent;
 }
@@ -274,30 +287,38 @@ sub send_alert {
 
     # we're pulling from %s, but still, a little abstraction
     # server settings
-    my $hostname      = $C::settings{xmpp_settings}{domain};
-    my $port          = $C::settings{xmpp_settings}{port};
-    my $componentname = $C::settings{xmpp_settings}{name};
+    my $hostname      = $C::xmpp{domain};
+    my $port          = $C::xmpp{port};
+    my $componentname = $C::xmpp{name};
     my $tls           = 1; # this should almost always be 1
     # auth settings
-    my $user     = $C::settings{xmpp_settings}{user};
-    my $password = $C::settings{xmpp_settings}{password};
-    my $resource = $C::settings{xmpp_settings}{resource};
+    my $user     = $C::xmpp{user};
+    my $password = $C::xmpp{password};
+    my $resource = $C::xmpp{resource};
     # message settings
-    my @targets  = values %{$C::settings{xmpp_settings}{targets}};
-    my @msgs     = values %{$C::settings{xmpp_settings}{messages}};
+    my @targets  = values %{$C::xmpp{targets}};
+    my @msgs     = values %{$C::xmpp{messages}};
     my $msg_txt  = $msgs[int(rand($#msgs))] . ", deviation: $deviation_pcent%, filename: $filename"; 
+
+	if ($C::experimental{link_diffs}) { 
+    	my $file = basename($filename);
+		my $url  = (exists $C::experimental{link_diffs_template}) ? $C::experimental{link_diffs_template} : $file;
+		$url     =~ s/!file!/$file/ unless $file eq $url; # this is a little murky..
+		$msg_txt =~ s/$filename/$url/;
+	}
 
     # check throttle
     my $lt1 = time();
-    my $lt2 = $C::settings{xmpp_settings}{last_msg} // time(); # this also prevents a msg from being sent for the first minute.. disabling throttle is a good idea on a long sleep timer
+    my $lt2 = $C::xmpp{last_msg} // time(); # this also prevents a msg from being sent for the first minute.. disabling throttle is a good idea on a long sleep timer
 
-    my $throttle = $C::settings{general_settings}{throttle};
+    my $throttle = $C::xmpp{throttle};
     my $sec_diff = $lt1 - $lt2;
     
     
     
     if ($sec_diff <= $throttle and $throttle != 0) {
-        print "\tthrottling XMPP messages, t$throttle / s$sec_diff\n" if $C::settings{general_settings}{verbose} ge 1;
+        print "\tthrottling XMPP messages, t$throttle / s$sec_diff / last" . localtime($lt2) . "\n" if $C::general{verbose} ge 1;
+		$C::xmpp{last_msg} = $lt2; # don't know how this was ever working before...
         return 0; # returning success
     }
 
@@ -354,7 +375,7 @@ sub send_alert {
     
     # throttle
     # my @lt1 = localtime;
-    $C::settings{xmpp_settings}{last_msg} = time();
+    $C::xmpp{last_msg} = time();
     
     
     return 0;
@@ -370,9 +391,9 @@ sub take_a_picture {
     my $ts = nicetime(\@lt1, "both");
     
     $filename = "mcap-" . $ts . "_diff.jpg";
-    $filename = File::Spec->catfile($C::settings{general_settings}{home}, $filename);
+    $filename = File::Spec->catfile($C::general{home}, $filename);
     
-	$cmd = $C::settings{motion_settings}{cmd} . " $filename";
+	$cmd = $C::motion{cmd} . " $filename";
     
     my $results = `$cmd 2>&1`; # capture and suppress STDOUT and STDERR
     
