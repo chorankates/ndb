@@ -68,6 +68,7 @@ die "DIE:: unable to locate 'take_picture.py'" unless -f 'take_picture.py';
 die "DIE:: unable to run on Windows currently" unless $^O =~ /linux/i;
 
 print "DBGZ" if 0;
+$C::xmpp{last_msg} = time(); # part initialization, part scope hacking
 
 ## loop
 while (1) {
@@ -309,7 +310,7 @@ sub send_alert {
 
     # check throttle
     my $lt1 = time();
-    my $lt2 = $C::xmpp{last_msg} // time(); # this also prevents a msg from being sent for the first minute.. disabling throttle is a good idea on a long sleep timer
+    my $lt2 = $C::xmpp{last_msg}; # this also prevents a msg from being sent for the first minute.. disabling throttle is a good idea on a long sleep timer
 
     my $throttle = $C::xmpp{throttle};
     my $sec_diff = $lt1 - $lt2;
